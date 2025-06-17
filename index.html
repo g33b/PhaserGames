@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Missile Command - Phaser</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Constants
+        const SCREEN_WIDTH = 1280;
+        const SCREEN_HEIGHT = 720;
+        const FPS = 60;
+
+        // Vector Colors
+        const COLORS = {
+            BLACK: 0x000000,
+            DARK_PURPLE: 0x14001e,
+            VECTOR_WHITE: 0xffffff,
+            VECTOR_GREEN: 0x00ff00,
+            VECTOR_CYAN: 0x00ffff,
+            VECTOR_YELLOW: 0xffff00,
+            VECTOR_RED: 0xff0000,
+            VECTOR_ORANGE: 0xff8000,
+            VECTOR_PURPLE: 0xff00ff,
+            DIM_GREEN: 0x008000,
+            DIM_CYAN: 0x008080
+        };
+
+        class VectorRenderer {
+            constructor(scene) {
+                this.scene = scene;
+                this.glowLayer = scene.add.graphics();
+                this.mainLayer = scene.add.graphics();
+                
+                // Set blend modes for glow effect
+                this.glowLayer.setBlendMode(Phaser.BlendModes.ADD);
+            }
+
+            clear() {
+                this.glowLayer.clear();
+                this.mainLayer.clear();
+            }
+
+            drawLine(startX, startY, endX, endY, color, width = 1) {
+                // Draw glow layers
+                this.glowLayer.lineStyle(width + 8, color, 0.1);
+                this.glowLayer.beginPath();
+                this.glowLayer.moveTo(startX, startY);
+                this.glowLayer.lineTo(endX, endY);
+                this.glowLayer.strokePath();
+
+                this.glowLayer.lineStyle(width + 4, color, 0.3);
+                this.glowLayer.beginPath();
+                this.glowLayer.moveTo(startX, startY);
+                this.glowLayer.lineTo(endX, endY);
+                this.glowLayer.strokePath();
+
+                this.glowLayer.lineStyle(width + 2, color, 0.5);
+                this.glowLayer.beginPath();
+                this.glowLayer.moveTo(startX, startY);
+                this.glowLayer.lineTo(endX, endY);
+                this.glowLayer.strokePath();
+
+                // Draw main line
+                this.mainLayer.lineStyle(width, color, 1.0);
+                this.mainLayer.beginPath();
+                this.mainLayer.moveTo(startX, startY);
+                this.mainLayer.lineTo(endX, endY);
+                this.mainLayer.strokePath();
+            }
+
+            drawCircle(x, y, radius, color, width = 1) {
+                if (radius <= 0) return;
+
+                // Draw glow layers
+                this.glowLayer.lineStyle(width, color, 0.1);
+                this.glowLayer.strokeCircle(x, y, radius + 4);
+
+                this.glowLayer.lineStyle(width, color, 0.3);
+                this.glowLayer.strokeCircle(x, y, radius + 2);
+
+                this.glowLayer.lineStyle(width, color, 0.5);
+                this.glowLayer.strokeCircle(x, y, radius + 1);
+
+                // Draw main circle
+                this.mainLayer.lineStyle(width, color, 1.0);
+                this.mainLayer.strokeCircle(x, y, radius);
+            }
+
+            drawPolygon(points, color, width = 1) {
+                if (points.length < 3) return;
+
+                // Draw glow layers
+                for (let alpha of [0.1, 0.3, 0.5]) {
+                    for (let i = 0; i < points.length; i++) {
+                        const start = points[i];
+                        const end = points[(i + 1) % points.length];
+                        this.glowLayer.lineStyle(width + 6 - alpha * 4, color, alpha);
+                        this.glowLayer.beginPath();
+                        this.glowLayer.moveTo(start.x, start.y);
+                        this.glowLayer.lineTo(end.x, end.y);
+                        this.glowLayer.strokePath();
+                    }
+                }
+
+                // Draw main polygon
+                this.mainLayer.lineStyle(width, color, 1.0);
+                this.mainLayer.beginPath();
+                this.mainLayer.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    this.mainLayer.lineTo(points[i].x, points[i].y);
+                }
+                this.mainLayer.closePath();
+                this.mainLayer.strokePath();
+            }
+
+            drawDot(x, y, color, size = 2) {
+                // Draw glow layers
+                this.glowLayer.fillStyle(color, 0.1);
+                this.glowLayer.fillCircle(x, y, size + 6);
+
+                this.glowLayer.fillStyle(color, 0.3);
+                this.glowLayer.fillCircle(x, y, size + 3);
+
+                this.glowLayer.fillStyle(color, 0.5);
+                this.glowLayer.fillCircle(x, y, size + 1);
+
+                // Draw main dot
+                this.mainLayer.fillStyle(color, 1.0);
+                this.mainLayer.fillCircle(x, y, size);
+            }
+        }
+
+        class EnemyMissile {
+            constructor(scene, startX, targetX, targetY) {
+                this.scene = scene;
+                this.startX = startX;
+                this.x = startX;
+                this.y = 0;
+                this.targetX = targetX;
+                this.targetY = targetY;
+
+                const distance = Math.sqrt((targetX - startX) ** 2 + targetY ** 2);
+                this.speed = 0.8;
+                this.dx = (targetX - startX) / distance * this.speed;
+                this.dy = targetY / distance * this.speed;
+
+                this.active = true;
+                this.trail = [];
+            }
+
+            update() {
+                if (!this.active) return;
+
+                this.x += this.dx;
+                this.y += this.dy;
+
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 20) {
+                    this.trail.shift();
+                }
+
+                if (Math.sqrt((this.x - this.targetX) ** 2 + (this.y - this.targetY) ** 2) < 5) {
+                    this.active = false;
+                    return "explode";
+                }
+            }
+
+            draw(renderer) {
+                if (!this.active) return;
+
+                // Draw trail
+                for (let i = 1; i < this.trail.length; i++) {
+                    const alpha = i / this.trail.length;
+                    const trailColor = Phaser.Display.Color.GetColor(
+                        Math.floor(255 * alpha),
+                        0,
+                        0
+                    );
+                    renderer.drawLine(
+                        this.trail[i-1].x, this.trail[i-1].y,
+                        this.trail[i].x, this.trail[i].y,
+                        trailColor, 1
+                    );
+                }
+
+                // Draw missile head
+                renderer.drawDot(this.x, this.y, COLORS.VECTOR_RED, 3);
+            }
+        }
+
+        class DefensiveMissile {
+            constructor(scene, startX, startY, targetX, targetY) {
+                this.scene = scene;
+                this.x = startX;
+                this.y = startY;
+                this.targetX = targetX;
+                this.targetY = targetY;
+
+                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
+                this.speed = 3.5;
+                this.dx = (targetX - startX) / distance * this.speed;
+                this.dy = (targetY - startY) / distance * this.speed;
+
+                this.active = true;
+                this.trail = [];
+            }
+
+            update() {
+                if (!this.active) return;
+
+                this.x += this.dx;
+                this.y += this.dy;
+
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 15) {
+                    this.trail.shift();
+                }
+
+                if (Math.sqrt((this.x - this.targetX) ** 2 + (this.y - this.targetY) ** 2) < 10) {
+                    this.active = false;
+                    return "explode";
+                }
+            }
+
+            draw(renderer) {
+                if (!this.active) return;
+
+                // Draw trail
+                for (let i = 1; i < this.trail.length; i++) {
+                    const alpha = i / this.trail.length;
+                    const trailColor = Phaser.Display.Color.GetColor(
+                        0,
+                        Math.floor(255 * alpha),
+                        0
+                    );
+                    renderer.drawLine(
+                        this.trail[i-1].x, this.trail[i-1].y,
+                        this.trail[i].x, this.trail[i].y,
+                        trailColor, 1
+                    );
+                }
+
+                // Draw missile head
+                renderer.drawDot(this.x, this.y, COLORS.VECTOR_GREEN, 2);
+            }
+        }
+
+        class VectorExplosion {
+            constructor(scene, x, y, maxRadius = 60) {
+                this.scene = scene;
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = maxRadius;
+                this.growthRate = 1.5;
+                this.active = true;
+                this.shrinking = false;
+                this.rings = [];
+                this.lifetime = 0;
+            }
+
+            update() {
+                if (!this.active) return;
+
+                this.lifetime++;
+
+                if (!this.shrinking) {
+                    this.radius += this.growthRate;
+
+                    if (this.rings.length === 0 || this.radius - this.rings[this.rings.length - 1] > 8) {
+                        this.rings.push(this.radius);
+                    }
+
+                    if (this.radius >= this.maxRadius) {
+                        this.shrinking = true;
+                    }
+                } else {
+                    this.radius -= this.growthRate;
+                    this.rings = this.rings.filter(r => r > 0 && (this.radius - r) < this.maxRadius);
+
+                    if (this.radius <= 0) {
+                        this.rings = [];
+                        this.active = false;
+                    }
+                }
+
+                if (this.lifetime > 120) {
+                    this.active = false;
+                    this.rings = [];
+                }
+            }
+
+            draw(renderer) {
+                if (!this.active) return;
+
+                // Draw rings
+                for (const ringRadius of this.rings) {
+                    if (ringRadius > 0 && ringRadius <= this.maxRadius) {
+                        const ageFactor = (this.radius - ringRadius) / this.maxRadius;
+                        const alpha = Math.max(0.0, Math.min(1.0, 1.0 - ageFactor));
+
+                        if (alpha > 0.1) {
+                            const ringColor = Phaser.Display.Color.GetColor(
+                                Math.floor(255 * alpha),
+                                Math.floor(255 * alpha),
+                                0
+                            );
+                            renderer.drawCircle(this.x, this.y, ringRadius, ringColor, 2);
+                        }
+                    }
+                }
+
+                // Draw main explosion circle
+                if (this.radius > 0 && !this.shrinking) {
+                    renderer.drawCircle(this.x, this.y, this.radius, COLORS.VECTOR_ORANGE, 1);
+                }
+            }
+
+            collidesWithPoint(x, y) {
+                if (!this.active) return false;
+                const distance = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2);
+                return distance <= this.radius;
+            }
+        }
+
+        class VectorCity {
+            constructor(scene, x, y, name) {
+                this.scene = scene;
+                this.x = x;
+                this.y = y;
+                this.name = name;
+                this.width = 50;
+                this.height = 40;
+                this.active = true;
+            }
+
+            draw(renderer) {
+                if (!this.active) return;
+
+                const baseY = this.y;
+
+                // Building 1 (tall center)
+                const building1 = [
+                    { x: this.x - 18, y: baseY },
+                    { x: this.x - 18, y: baseY - 35 },
+                    { x: this.x - 6, y: baseY - 35 },
+                    { x: this.x - 6, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                // Building 2 (medium left)
+                const building2 = [
+                    { x: this.x - 30, y: baseY },
+                    { x: this.x - 30, y: baseY - 20 },
+                    { x: this.x - 18, y: baseY - 20 },
+                    { x: this.x - 18, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                // Building 3 (small right)
+                const building3 = [
+                    { x: this.x - 6, y: baseY },
+                    { x: this.x - 6, y: baseY - 25 },
+                    { x: this.x + 12, y: baseY - 25 },
+                    { x: this.x + 12, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                // Detail lines
+                renderer.drawLine(this.x - 24, baseY - 6, this.x - 24, baseY - 12, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x - 12, baseY - 10, this.x - 12, baseY - 28, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 3, baseY - 8, this.x + 3, baseY - 18, COLORS.DIM_GREEN, 1);
+            }
+
+            getRect() {
+                return new Phaser.Geom.Rectangle(this.x - 30, this.y - 35, 42, 35);
+            }
+        }
+
+        // Title Scene
+        class TitleScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'TitleScene' });
+            }
+
+            create() {
+                this.cameras.main.setBackgroundColor(COLORS.DARK_PURPLE);
+                this.renderer = new VectorRenderer(this);
+                this.timeAccumulator = 0;
+
+                // Create title text
+                const centerX = SCREEN_WIDTH / 2;
+                const centerY = SCREEN_HEIGHT / 2;
+
+                this.titleText1 = this.add.text(centerX, centerY - 60, 'MISSILE COMMAND', {
+                    fontSize: '42px',
+                    fontFamily: 'Courier New',
+                    color: '#00ffff'
+                }).setOrigin(0.5);
+
+                this.titleText2 = this.add.text(centerX, centerY - 20, 'DEFEND ISRAEL', {
+                    fontSize: '42px',
+                    fontFamily: 'Courier New',
+                    color: '#00ff00'
+                }).setOrigin(0.5);
+
+                this.startText = this.add.text(centerX, centerY + 40, 'PRESS ENTER TO START', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#ffffff'
+                }).setOrigin(0.5);
+
+                // Input
+                this.input.keyboard.on('keydown-ENTER', () => {
+                    this.scene.start('GameScene');
+                });
+
+                // Draw decorative elements
+                this.drawDecorations();
+            }
+
+            update(time, delta) {
+                this.timeAccumulator += delta / 1000;
+                
+                // Pulsing start text
+                const pulseFactor = Math.sin(this.timeAccumulator * 3) * 0.5 + 0.5;
+                const pulseAlpha = Math.floor(150 + 105 * pulseFactor);
+                this.startText.setTint(Phaser.Display.Color.GetColor(pulseAlpha, pulseAlpha, 255));
+            }
+
+            drawDecorations() {
+                this.renderer.clear();
+                
+                const centerY = SCREEN_HEIGHT / 2;
+                
+                // Top and bottom lines
+                this.renderer.drawLine(150, centerY - 120, SCREEN_WIDTH - 150, centerY - 120, COLORS.VECTOR_WHITE, 2);
+                this.renderer.drawLine(150, centerY + 120, SCREEN_WIDTH - 150, centerY + 120, COLORS.VECTOR_WHITE, 2);
+                
+                // Corner decorations
+                const corners = [
+                    { x: 180, y: centerY - 100 },
+                    { x: SCREEN_WIDTH - 180, y: centerY - 100 },
+                    { x: 180, y: centerY + 100 },
+                    { x: SCREEN_WIDTH - 180, y: centerY + 100 }
+                ];
+                
+                for (const corner of corners) {
+                    this.renderer.drawCircle(corner.x, corner.y, 6, COLORS.VECTOR_YELLOW, 2);
+                }
+            }
+        }
+
+        // Main Game Scene
+        class GameScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'GameScene' });
+            }
+
+            create() {
+                this.cameras.main.setBackgroundColor(COLORS.DARK_PURPLE);
+                this.renderer = new VectorRenderer(this);
+
+                // Game state
+                this.score = 0;
+                this.level = 1;
+                this.gameOver = false;
+                this.ammo = 10;
+                this.crosshairPulse = 0;
+                this.timeAccumulator = 0;
+
+                // Game objects
+                this.enemyMissiles = [];
+                this.defensiveMissiles = [];
+                this.explosions = [];
+
+                // Cities
+                this.cities = [];
+                const cityNames = ["Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva", "Netanya", "Ashkelon"];
+                const cityPositions = [200, 350, 500, 650, 800, 950];
+                for (let i = 0; i < cityPositions.length; i++) {
+                    this.cities.push(new VectorCity(this, cityPositions[i], SCREEN_HEIGHT - 80, cityNames[i]));
+                }
+
+                // Missile bases
+                this.basePositions = [
+                    { x: 150, y: SCREEN_HEIGHT - 40 },
+                    { x: 640, y: SCREEN_HEIGHT - 40 },
+                    { x: 1130, y: SCREEN_HEIGHT - 40 }
+                ];
+
+                // Timing
+                this.enemySpawnTimer = 0;
+                this.enemySpawnDelay = 180; // Increased from 120
+                this.levelTimeLimit = 45 * 60; // Increased from 30 * 60
+                this.levelTimer = 0;
+
+                // Notifications
+                this.cityDestroyedNotification = null;
+                this.notificationTimer = 0;
+                this.notificationDuration = 300;
+
+                // UI Text
+                this.createUI();
+
+                // Input
+                this.input.on('pointerdown', (pointer) => {
+                    if (!this.gameOver) {
+                        this.fireDefensiveMissile(pointer.x, pointer.y);
+                    }
+                });
+
+                this.input.keyboard.on('keydown-R', () => {
+                    if (this.gameOver) {
+                        this.resetGame();
+                    }
+                });
+
+                this.input.keyboard.on('keydown-ESC', () => {
+                    this.scene.start('TitleScene');
+                });
+            }
+
+            createUI() {
+                this.scoreText = this.add.text(30, 30, 'SCORE: 000000', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#00ff00'
+                });
+
+                this.levelText = this.add.text(30, 60, 'LEVEL: 01', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#00ffff'
+                });
+
+                this.ammoText = this.add.text(30, 90, 'AMMO: 10', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#ffff00'
+                });
+
+                this.citiesText = this.add.text(30, 120, 'CITIES: 6', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#00ff00'
+                });
+
+                this.timeText = this.add.text(30, 150, 'TIME: 45S', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#ffffff'
+                });
+
+                this.titleText = this.add.text(SCREEN_WIDTH / 2, 30, 'Defend Israel', {
+                    fontSize: '42px',
+                    fontFamily: 'Courier New',
+                    color: '#00ffff'
+                }).setOrigin(0.5);
+
+                this.timeRemainingText = this.add.text(SCREEN_WIDTH - 300, 15, 'TIME REMAINING', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#ffffff'
+                });
+
+                // City name texts
+                this.cityNameTexts = [];
+                for (const city of this.cities) {
+                    const nameText = this.add.text(city.x, city.y + 8, city.name, {
+                        fontSize: '20px',
+                        fontFamily: 'Courier New',
+                        color: '#008000'
+                    }).setOrigin(0.5);
+                    this.cityNameTexts.push(nameText);
+                }
+            }
+
+            update(time, delta) {
+                if (this.gameOver) return;
+
+                this.timeAccumulator += delta / 1000;
+                this.levelTimer++;
+                this.crosshairPulse += 0.05; // Reduced from 0.1
+
+                // Update notification
+                if (this.cityDestroyedNotification) {
+                    this.notificationTimer++;
+                    if (this.notificationTimer >= this.notificationDuration) {
+                        if (this.cityDestroyedNotification.text) {
+                            this.cityDestroyedNotification.text.destroy();
+                        }
+                        this.cityDestroyedNotification = null;
+                        this.notificationTimer = 0;
+                    }
+                }
+
+                // Spawn enemy missiles
+                if (this.levelTimer < this.levelTimeLimit) {
+                    this.enemySpawnTimer++;
+                    if (this.enemySpawnTimer >= this.enemySpawnDelay) {
+                        this.spawnEnemyMissile();
+                        this.enemySpawnTimer = 0;
+                    }
+                }
+
+                // Update game objects
+                this.updateEnemyMissiles();
+                this.updateDefensiveMissiles();
+                this.updateExplosions();
+                this.checkCollisions();
+                this.checkGameOver();
+                this.checkLevelCompletion();
+                this.updateUI();
+                this.draw();
+            }
+
+            spawnEnemyMissile() {
+                const startX = Phaser.Math.Between(50, SCREEN_WIDTH - 50);
+                const targetX = Phaser.Math.Between(150, SCREEN_WIDTH - 150);
+                const targetY = SCREEN_HEIGHT - 80;
+                this.enemyMissiles.push(new EnemyMissile(this, startX, targetX, targetY));
+            }
+
+            fireDefensiveMissile(targetX, targetY) {
+                if (this.ammo <= 0) return;
+
+                // Find closest base
+                let closestBase = this.basePositions[0];
+                let minDistance = Math.abs(closestBase.x - targetX);
+                
+                for (const base of this.basePositions) {
+                    const distance = Math.abs(base.x - targetX);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestBase = base;
+                    }
+                }
+
+                this.defensiveMissiles.push(new DefensiveMissile(this, closestBase.x, closestBase.y, targetX, targetY));
+                this.ammo--;
+            }
+
+            updateEnemyMissiles() {
+                for (let i = this.enemyMissiles.length - 1; i >= 0; i--) {
+                    const missile = this.enemyMissiles[i];
+                    const result = missile.update();
+                    
+                    if (result === "explode") {
+                        this.explosions.push(new VectorExplosion(this, missile.targetX, missile.targetY));
+                        this.checkCityHit(missile.targetX, missile.targetY);
+                        this.enemyMissiles.splice(i, 1);
+                    } else if (!missile.active) {
+                        this.enemyMissiles.splice(i, 1);
+                    }
+                }
+            }
+
+            updateDefensiveMissiles() {
+                for (let i = this.defensiveMissiles.length - 1; i >= 0; i--) {
+                    const missile = this.defensiveMissiles[i];
+                    const result = missile.update();
+                    
+                    if (result === "explode") {
+                        this.explosions.push(new VectorExplosion(this, missile.targetX, missile.targetY));
+                        this.defensiveMissiles.splice(i, 1);
+                    } else if (!missile.active) {
+                        this.defensiveMissiles.splice(i, 1);
+                    }
+                }
+            }
+
+            updateExplosions() {
+                for (let i = this.explosions.length - 1; i >= 0; i--) {
+                    const explosion = this.explosions[i];
+                    explosion.update();
+                    if (!explosion.active) {
+                        this.explosions.splice(i, 1);
+                    }
+                }
+            }
+
+            checkCollisions() {
+                for (const explosion of this.explosions) {
+                    for (let i = this.enemyMissiles.length - 1; i >= 0; i--) {
+                        const missile = this.enemyMissiles[i];
+                        if (explosion.collidesWithPoint(missile.x, missile.y)) {
+                            missile.active = false;
+                            this.score += 25;
+                            this.enemyMissiles.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
+            checkCityHit(x, y) {
+                for (let i = 0; i < this.cities.length; i++) {
+                    const city = this.cities[i];
+                    if (city.active && Math.sqrt((x - city.x) ** 2 + (y - city.y) ** 2) < 40) {
+                        city.active = false;
+                        this.cityNameTexts[i].setVisible(false);
+                        
+                        // Show notification
+                        const notificationText = this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60, 
+                            `${city.name} DESTROYED!`, {
+                            fontSize: '28px',
+                            fontFamily: 'Courier New',
+                            color: '#ff0000'
+                        }).setOrigin(0.5);
+                        
+                        this.cityDestroyedNotification = { text: notificationText };
+                        this.notificationTimer = 0;
+                        break;
+                    }
+                }
+            }
+
+            checkGameOver() {
+                const activeCities = this.cities.filter(city => city.active).length;
+                if (activeCities === 0) {
+                    this.gameOver = true;
+                    this.showGameOver();
+                }
+            }
+
+            checkLevelCompletion() {
+                const activeCities = this.cities.filter(city => city.active).length;
+                if (this.levelTimer >= this.levelTimeLimit && activeCities > 0) {
+                    this.nextLevel();
+                }
+            }
+
+            nextLevel() {
+                this.level++;
+                this.levelTimer = 0;
+                this.enemySpawnTimer = 0;
+                this.enemySpawnDelay = Math.max(60, 180 - this.level * 10); // Slower difficulty increase
+                this.levelTimeLimit = Math.max(30 * 60, 45 * 60 - this.level * 120); // Slower time reduction
+                this.ammo = Math.min(15, 10 + Math.floor(this.level / 3));
+
+                const activeCities = this.cities.filter(city => city.active).length;
+                this.score += activeCities * 100;
+                this.score += this.ammo * 10;
+            }
+
+            showGameOver() {
+                this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50, 'GAME OVER', {
+                    fontSize: '42px',
+                    fontFamily: 'Courier New',
+                    color: '#ff0000'
+                }).setOrigin(0.5);
+
+                this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20, 'PRESS R TO RESTART', {
+                    fontSize: '28px',
+                    fontFamily: 'Courier New',
+                    color: '#ffffff'
+                }).setOrigin(0.5);
+            }
+
+            resetGame() {
+                this.scene.restart();
+            }
+
+            updateUI() {
+                this.scoreText.setText(`SCORE: ${this.score.toString().padStart(6, '0')}`);
+                this.levelText.setText(`LEVEL: ${this.level.toString().padStart(2, '0')}`);
+                this.ammoText.setText(`AMMO: ${this.ammo.toString().padStart(2, '0')}`);
+                
+                const activeCities = this.cities.filter(city => city.active).length;
+                this.citiesText.setText(`CITIES: ${activeCities}`);
+                
+                const timeRemaining = Math.max(0, this.levelTimeLimit - this.levelTimer);
+                const secondsRemaining = Math.floor(timeRemaining / 60);
+                const timeColor = secondsRemaining < 5 ? '#ff0000' : secondsRemaining < 10 ? '#ffff00' : '#ffffff';
+                this.timeText.setText(`TIME: ${secondsRemaining.toString().padStart(2, '0')}S`);
+                this.timeText.setColor(timeColor);
+            }
+
+            draw() {
+                this.renderer.clear();
+
+                // Draw horizon line
+                this.renderer.drawLine(0, SCREEN_HEIGHT - 80, SCREEN_WIDTH, SCREEN_HEIGHT - 80, COLORS.VECTOR_CYAN, 1);
+
+                // Draw cities
+                for (const city of this.cities) {
+                    city.draw(this.renderer);
+                }
+
+                // Draw missile bases
+                for (const base of this.basePositions) {
+                    const basePoints = [
+                        { x: base.x, y: base.y - 20 },
+                        { x: base.x - 15, y: base.y },
+                        { x: base.x + 15, y: base.y }
+                    ];
+                    this.renderer.drawPolygon(basePoints, COLORS.VECTOR_CYAN, 2);
+                }
+
+                // Draw game objects
+                for (const missile of this.enemyMissiles) {
+                    missile.draw(this.renderer);
+                }
+
+                for (const missile of this.defensiveMissiles) {
+                    missile.draw(this.renderer);
+                }
+
+                for (const explosion of this.explosions) {
+                    explosion.draw(this.renderer);
+                }
+
+                // Draw crosshair
+                if (!this.gameOver) {
+                    const pointer = this.input.activePointer;
+                    const crosshairSize = 10 + Math.sin(this.crosshairPulse) * 2;
+                    
+                    this.renderer.drawLine(
+                        pointer.x - crosshairSize, pointer.y,
+                        pointer.x + crosshairSize, pointer.y,
+                        COLORS.VECTOR_WHITE, 1
+                    );
+                    this.renderer.drawLine(
+                        pointer.x, pointer.y - crosshairSize,
+                        pointer.x, pointer.y + crosshairSize,
+                        COLORS.VECTOR_WHITE, 1
+                    );
+                    this.renderer.drawCircle(pointer.x, pointer.y, crosshairSize, COLORS.VECTOR_WHITE, 1);
+                }
+
+                // Draw timer bar
+                this.drawTimerBar();
+            }
+
+            drawTimerBar() {
+                const barWidth = 250;
+                const barHeight = 10;
+                const barX = SCREEN_WIDTH - barWidth - 50;
+                const barY = 40;
+
+                // Bar outline
+                const barPoints = [
+                    { x: barX, y: barY },
+                    { x: barX + barWidth, y: barY },
+                    { x: barX + barWidth, y: barY + barHeight },
+                    { x: barX, y: barY + barHeight }
+                ];
+                this.renderer.drawPolygon(barPoints, COLORS.VECTOR_WHITE, 1);
+
+                // Timer progress
+                if (this.levelTimeLimit > 0) {
+                    const timeRemaining = Math.max(0, this.levelTimeLimit - this.levelTimer);
+                    const timerProgress = timeRemaining / this.levelTimeLimit;
+                    const progressWidth = Math.floor((barWidth - 4) * timerProgress);
+                    
+                    if (progressWidth > 0) {
+                        const progressColor = timerProgress < 0.2 ? COLORS.VECTOR_RED : 
+                                            timerProgress < 0.5 ? COLORS.VECTOR_YELLOW : COLORS.VECTOR_GREEN;
+                        
+                        for (let i = 2; i < barHeight - 2; i++) {
+                            this.renderer.drawLine(
+                                barX + 2, barY + i,
+                                barX + 2 + progressWidth, barY + i,
+                                progressColor, 1
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Game Configuration
+        const config = {
+            type: Phaser.AUTO,
+            width: SCREEN_WIDTH,
+            height: SCREEN_HEIGHT,
+            backgroundColor: COLORS.DARK_PURPLE,
+            scene: [TitleScene, GameScene],
+            physics: {
+                default: 'arcade'
+            }
+        };
+
+        // Start the game
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>
