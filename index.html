@@ -275,12 +275,13 @@
                 this.shrinking = false;
                 this.rings = [];
                 this.lifetime = 0;
+                this.maxLifetime = 2000; // 2 seconds in milliseconds
             }
 
-            update() {
+            update(delta) {
                 if (!this.active) return;
 
-                this.lifetime++;
+                this.lifetime += delta || 16; // Default to ~60fps if no delta provided
 
                 if (!this.shrinking) {
                     this.radius += this.growthRate;
@@ -302,7 +303,7 @@
                     }
                 }
 
-                if (this.lifetime > 120) {
+                if (this.lifetime > this.maxLifetime) {
                     this.active = false;
                     this.rings = [];
                 }
@@ -342,7 +343,7 @@
         }
 
         class VectorCity {
-            constructor(scene, x, y, name) {
+            constructor(scene, x, y, name, structureType = 0) {
                 this.scene = scene;
                 this.x = x;
                 this.y = y;
@@ -350,6 +351,7 @@
                 this.width = 50;
                 this.height = 40;
                 this.active = true;
+                this.structureType = structureType; // 0-15 for 16 different structures
             }
 
             draw(renderer) {
@@ -357,7 +359,61 @@
 
                 const baseY = this.y;
 
-                // Building 1 (tall center)
+                // Draw different structure patterns based on structureType
+                switch (this.structureType) {
+                    case 0: // Original: tall center, medium left, small right
+                        this.drawStructure0(renderer, baseY);
+                        break;
+                    case 1: // Single tall building
+                        this.drawStructure1(renderer, baseY);
+                        break;
+                    case 2: // Two equal buildings
+                        this.drawStructure2(renderer, baseY);
+                        break;
+                    case 3: // Three equal buildings
+                        this.drawStructure3(renderer, baseY);
+                        break;
+                    case 4: // Tall left, short right
+                        this.drawStructure4(renderer, baseY);
+                        break;
+                    case 5: // Short left, tall right
+                        this.drawStructure5(renderer, baseY);
+                        break;
+                    case 6: // Pyramid shape (low-high-low)
+                        this.drawStructure6(renderer, baseY);
+                        break;
+                    case 7: // Reverse pyramid (high-low-high)
+                        this.drawStructure7(renderer, baseY);
+                        break;
+                    case 8: // Single wide building
+                        this.drawStructure8(renderer, baseY);
+                        break;
+                    case 9: // Two tall buildings with gap
+                        this.drawStructure9(renderer, baseY);
+                        break;
+                    case 10: // Three buildings ascending
+                        this.drawStructure10(renderer, baseY);
+                        break;
+                    case 11: // Three buildings descending
+                        this.drawStructure11(renderer, baseY);
+                        break;
+                    case 12: // Single building with antenna
+                        this.drawStructure12(renderer, baseY);
+                        break;
+                    case 13: // Two buildings different heights
+                        this.drawStructure13(renderer, baseY);
+                        break;
+                    case 14: // Three buildings with middle shortest
+                        this.drawStructure14(renderer, baseY);
+                        break;
+                    case 15: // Wide building with tower
+                        this.drawStructure15(renderer, baseY);
+                        break;
+                }
+            }
+
+            drawStructure0(renderer, baseY) {
+                // Original structure
                 const building1 = [
                     { x: this.x - 18, y: baseY },
                     { x: this.x - 18, y: baseY - 35 },
@@ -366,7 +422,6 @@
                 ];
                 renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
 
-                // Building 2 (medium left)
                 const building2 = [
                     { x: this.x - 30, y: baseY },
                     { x: this.x - 30, y: baseY - 20 },
@@ -375,7 +430,6 @@
                 ];
                 renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
 
-                // Building 3 (small right)
                 const building3 = [
                     { x: this.x - 6, y: baseY },
                     { x: this.x - 6, y: baseY - 25 },
@@ -384,10 +438,368 @@
                 ];
                 renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
 
-                // Detail lines
                 renderer.drawLine(this.x - 24, baseY - 6, this.x - 24, baseY - 12, COLORS.DIM_GREEN, 1);
                 renderer.drawLine(this.x - 12, baseY - 10, this.x - 12, baseY - 28, COLORS.DIM_GREEN, 1);
                 renderer.drawLine(this.x + 3, baseY - 8, this.x + 3, baseY - 18, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure1(renderer, baseY) {
+                // Single tall building
+                const building = [
+                    { x: this.x - 15, y: baseY },
+                    { x: this.x - 15, y: baseY - 35 },
+                    { x: this.x + 15, y: baseY - 35 },
+                    { x: this.x + 15, y: baseY }
+                ];
+                renderer.drawPolygon(building, COLORS.VECTOR_GREEN, 1);
+                renderer.drawLine(this.x - 8, baseY - 8, this.x - 8, baseY - 25, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 8, baseY - 8, this.x + 8, baseY - 25, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x, baseY - 12, this.x, baseY - 30, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure2(renderer, baseY) {
+                // Two equal buildings
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 28 },
+                    { x: this.x - 5, y: baseY - 28 },
+                    { x: this.x - 5, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x + 5, y: baseY },
+                    { x: this.x + 5, y: baseY - 28 },
+                    { x: this.x + 25, y: baseY - 28 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 15, baseY - 8, this.x - 15, baseY - 20, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 15, baseY - 8, this.x + 15, baseY - 20, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure3(renderer, baseY) {
+                // Three equal buildings
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 25 },
+                    { x: this.x - 10, y: baseY - 25 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 25 },
+                    { x: this.x + 25, y: baseY - 25 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 17, baseY - 8, this.x - 17, baseY - 18, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x, baseY - 8, this.x, baseY - 18, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 17, baseY - 8, this.x + 17, baseY - 18, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure4(renderer, baseY) {
+                // Tall left, short right
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 35 },
+                    { x: this.x - 5, y: baseY - 35 },
+                    { x: this.x - 5, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x + 5, y: baseY },
+                    { x: this.x + 5, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 15, baseY - 10, this.x - 15, baseY - 28, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 15, baseY - 6, this.x + 15, baseY - 12, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure5(renderer, baseY) {
+                // Short left, tall right
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 18 },
+                    { x: this.x - 5, y: baseY - 18 },
+                    { x: this.x - 5, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x + 5, y: baseY },
+                    { x: this.x + 5, y: baseY - 35 },
+                    { x: this.x + 25, y: baseY - 35 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 15, baseY - 6, this.x - 15, baseY - 12, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 15, baseY - 10, this.x + 15, baseY - 28, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure6(renderer, baseY) {
+                // Pyramid shape (low-high-low)
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 18 },
+                    { x: this.x - 10, y: baseY - 18 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 35 },
+                    { x: this.x + 8, y: baseY - 35 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x, baseY - 10, this.x, baseY - 30, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure7(renderer, baseY) {
+                // Reverse pyramid (high-low-high)
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 32 },
+                    { x: this.x - 10, y: baseY - 32 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 15 },
+                    { x: this.x + 8, y: baseY - 15 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 32 },
+                    { x: this.x + 25, y: baseY - 32 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 17, baseY - 8, this.x - 17, baseY - 25, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 17, baseY - 8, this.x + 17, baseY - 25, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure8(renderer, baseY) {
+                // Single wide building
+                const building = [
+                    { x: this.x - 28, y: baseY },
+                    { x: this.x - 28, y: baseY - 22 },
+                    { x: this.x + 28, y: baseY - 22 },
+                    { x: this.x + 28, y: baseY }
+                ];
+                renderer.drawPolygon(building, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 20, baseY - 6, this.x - 20, baseY - 16, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x - 7, baseY - 6, this.x - 7, baseY - 16, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 7, baseY - 6, this.x + 7, baseY - 16, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 20, baseY - 6, this.x + 20, baseY - 16, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure9(renderer, baseY) {
+                // Two tall buildings with gap
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 33 },
+                    { x: this.x - 10, y: baseY - 33 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 33 },
+                    { x: this.x + 25, y: baseY - 33 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 17, baseY - 8, this.x - 17, baseY - 26, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 17, baseY - 8, this.x + 17, baseY - 26, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure10(renderer, baseY) {
+                // Three buildings ascending
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 15 },
+                    { x: this.x - 10, y: baseY - 15 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 35 },
+                    { x: this.x + 25, y: baseY - 35 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x + 17, baseY - 10, this.x + 17, baseY - 28, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure11(renderer, baseY) {
+                // Three buildings descending
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 35 },
+                    { x: this.x - 10, y: baseY - 35 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY - 25 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 15 },
+                    { x: this.x + 25, y: baseY - 15 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 17, baseY - 10, this.x - 17, baseY - 28, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure12(renderer, baseY) {
+                // Single building with antenna
+                const building = [
+                    { x: this.x - 20, y: baseY },
+                    { x: this.x - 20, y: baseY - 25 },
+                    { x: this.x + 20, y: baseY - 25 },
+                    { x: this.x + 20, y: baseY }
+                ];
+                renderer.drawPolygon(building, COLORS.VECTOR_GREEN, 1);
+
+                // Antenna
+                renderer.drawLine(this.x, baseY - 25, this.x, baseY - 35, COLORS.VECTOR_GREEN, 1);
+                renderer.drawLine(this.x - 3, baseY - 32, this.x + 3, baseY - 32, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 10, baseY - 8, this.x - 10, baseY - 18, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 10, baseY - 8, this.x + 10, baseY - 18, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure13(renderer, baseY) {
+                // Two buildings different heights
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 30 },
+                    { x: this.x - 5, y: baseY - 30 },
+                    { x: this.x - 5, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x + 5, y: baseY },
+                    { x: this.x + 5, y: baseY - 22 },
+                    { x: this.x + 25, y: baseY - 22 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 15, baseY - 8, this.x - 15, baseY - 22, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 15, baseY - 6, this.x + 15, baseY - 16, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure14(renderer, baseY) {
+                // Three buildings with middle shortest
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 28 },
+                    { x: this.x - 10, y: baseY - 28 },
+                    { x: this.x - 10, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const building2 = [
+                    { x: this.x - 8, y: baseY },
+                    { x: this.x - 8, y: baseY - 12 },
+                    { x: this.x + 8, y: baseY - 12 },
+                    { x: this.x + 8, y: baseY }
+                ];
+                renderer.drawPolygon(building2, COLORS.VECTOR_GREEN, 1);
+
+                const building3 = [
+                    { x: this.x + 10, y: baseY },
+                    { x: this.x + 10, y: baseY - 28 },
+                    { x: this.x + 25, y: baseY - 28 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building3, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 17, baseY - 8, this.x - 17, baseY - 20, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 17, baseY - 8, this.x + 17, baseY - 20, COLORS.DIM_GREEN, 1);
+            }
+
+            drawStructure15(renderer, baseY) {
+                // Wide building with tower
+                const building1 = [
+                    { x: this.x - 25, y: baseY },
+                    { x: this.x - 25, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY - 18 },
+                    { x: this.x + 25, y: baseY }
+                ];
+                renderer.drawPolygon(building1, COLORS.VECTOR_GREEN, 1);
+
+                const tower = [
+                    { x: this.x - 6, y: baseY - 18 },
+                    { x: this.x - 6, y: baseY - 35 },
+                    { x: this.x + 6, y: baseY - 35 },
+                    { x: this.x + 6, y: baseY - 18 }
+                ];
+                renderer.drawPolygon(tower, COLORS.VECTOR_GREEN, 1);
+
+                renderer.drawLine(this.x - 18, baseY - 6, this.x - 18, baseY - 12, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x + 18, baseY - 6, this.x + 18, baseY - 12, COLORS.DIM_GREEN, 1);
+                renderer.drawLine(this.x, baseY - 25, this.x, baseY - 30, COLORS.DIM_GREEN, 1);
             }
 
             getRect() {
@@ -422,7 +834,7 @@
                     color: '#00ff00'
                 }).setOrigin(0.5);
 
-                this.startText = this.add.text(centerX, centerY + 40, 'PRESS ENTER TO START', {
+                this.startText = this.add.text(centerX, centerY + 40, 'PRESS ENTER OR TAP TO START', {
                     fontSize: '28px',
                     fontFamily: 'Courier New',
                     color: '#ffffff'
@@ -430,6 +842,11 @@
 
                 // Input
                 this.input.keyboard.on('keydown-ENTER', () => {
+                    this.scene.start('GameScene');
+                });
+
+                // Touch/tap input for mobile
+                this.input.on('pointerdown', () => {
                     this.scene.start('GameScene');
                 });
 
@@ -492,43 +909,36 @@
                 this.defensiveMissiles = [];
                 this.explosions = [];
 
-                // Cities
+                // Cities - randomized names and more cities  
                 this.cities = [];
-                const cityNames = ["Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva", "Netanya", "Ashkelon"];
-                const cityPositions = [200, 350, 500, 650, 800, 950];
-                for (let i = 0; i < cityPositions.length; i++) {
-                    this.cities.push(new VectorCity(this, cityPositions[i], SCREEN_HEIGHT - 80, cityNames[i]));
-                }
-                
-                // Reset all cities to active state
-                for (const city of this.cities) {
-                    city.active = true;
-                }
+                this.createRandomizedCities();
 
                 // Missile bases
                 this.basePositions = [
-                    { x: 150, y: SCREEN_HEIGHT - 40 },
-                    { x: 640, y: SCREEN_HEIGHT - 40 },
-                    { x: 1130, y: SCREEN_HEIGHT - 40 }
+                    { x: 150, y: SCREEN_HEIGHT - 25 },
+                    { x: 640, y: SCREEN_HEIGHT - 25 },
+                    { x: 1130, y: SCREEN_HEIGHT - 25 }
                 ];
 
-                // Timing
+                // Timing - using real seconds instead of frames
                 this.enemySpawnTimer = 0;
-                this.enemySpawnDelay = 180; // Increased from 120
-                this.levelTimeLimit = 45 * 60; // Increased from 30 * 60
+                this.enemySpawnDelay = 3000; // 3 seconds in milliseconds
+                this.levelTimeLimit = 30000; // 30 seconds in milliseconds  
                 this.levelTimer = 0;
 
                 // Notifications
                 this.cityDestroyedNotification = null;
                 this.notificationTimer = 0;
-                this.notificationDuration = 300;
+                this.notificationDuration = 5000; // 5 seconds in milliseconds
 
                 // UI Text
                 this.createUI();
 
                 // Input
                 this.input.on('pointerdown', (pointer) => {
-                    if (!this.gameOver) {
+                    if (this.gameOver) {
+                        this.resetGame();
+                    } else {
                         this.fireDefensiveMissile(pointer.x, pointer.y);
                     }
                 });
@@ -563,13 +973,13 @@
                     color: '#ffff00'
                 });
 
-                this.citiesText = this.add.text(30, 120, 'CITIES: 6', {
+                this.citiesText = this.add.text(30, 120, 'CITIES: 8', {
                     fontSize: '28px',
                     fontFamily: 'Courier New',
                     color: '#00ff00'
                 });
 
-                this.timeText = this.add.text(30, 150, 'TIME: 45S', {
+                this.timeText = this.add.text(30, 150, 'TIME: 30S', {
                     fontSize: '28px',
                     fontFamily: 'Courier New',
                     color: '#ffffff'
@@ -596,12 +1006,12 @@
                 if (this.gameOver) return;
 
                 this.timeAccumulator += delta / 1000;
-                this.levelTimer++;
+                this.levelTimer += delta; // Add delta time in milliseconds
                 this.crosshairPulse += 0.05; // Reduced from 0.1
 
                 // Update notification
                 if (this.cityDestroyedNotification) {
-                    this.notificationTimer++;
+                    this.notificationTimer += delta;
                     if (this.notificationTimer >= this.notificationDuration) {
                         if (this.cityDestroyedNotification.text) {
                             this.cityDestroyedNotification.text.destroy();
@@ -613,7 +1023,7 @@
 
                 // Spawn enemy missiles
                 if (this.levelTimer < this.levelTimeLimit) {
-                    this.enemySpawnTimer++;
+                    this.enemySpawnTimer += delta;
                     if (this.enemySpawnTimer >= this.enemySpawnDelay) {
                         this.spawnEnemyMissile();
                         this.enemySpawnTimer = 0;
@@ -623,7 +1033,7 @@
                 // Update game objects
                 this.updateEnemyMissiles();
                 this.updateDefensiveMissiles();
-                this.updateExplosions();
+                this.updateExplosions(delta);
                 this.checkCollisions();
                 this.checkGameOver();
                 this.checkLevelCompletion();
@@ -686,10 +1096,10 @@
                 }
             }
 
-            updateExplosions() {
+            updateExplosions(delta) {
                 for (let i = this.explosions.length - 1; i >= 0; i--) {
                     const explosion = this.explosions[i];
-                    explosion.update();
+                    explosion.update(delta);
                     if (!explosion.active) {
                         this.explosions.splice(i, 1);
                     }
@@ -755,8 +1165,8 @@
                 this.level++;
                 this.levelTimer = 0;
                 this.enemySpawnTimer = 0;
-                this.enemySpawnDelay = Math.max(60, 180 - this.level * 10); // Slower difficulty increase
-                this.levelTimeLimit = Math.max(30 * 60, 45 * 60 - this.level * 120); // Slower time reduction
+                this.enemySpawnDelay = Math.max(1000, 3000 - this.level * 200); // Decrease spawn delay by 200ms per level, minimum 1 second
+                this.levelTimeLimit = 30000; // Keep at 30 seconds for all levels
                 this.ammo = Math.min(15, 10 + Math.floor(this.level / 3));
 
                 const activeCities = this.cities.filter(city => city.active).length;
@@ -771,17 +1181,48 @@
                     color: '#ff0000'
                 }).setOrigin(0.5);
 
-                this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20, 'PRESS R TO RESTART', {
+                this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20, 'PRESS R OR TAP TO RESTART', {
                     fontSize: '28px',
                     fontFamily: 'Courier New',
                     color: '#ffffff'
                 }).setOrigin(0.5);
             }
 
+            createRandomizedCities() {
+                const allCityNames = [
+                    "Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva", "Netanya", "Ashkelon",
+                    "Ashdod", "Rishon LeZion", "Petah Tikva", "Ramat Gan", "Herzliya", 
+                    "Kfar Saba", "Ra'anana", "Holon", "Bat Yam", "Bne Brak", "Rehovot",
+                    "Modiin", "Nazareth", "Acre", "Eilat", "Tiberias", "Safed", "Kiryat Gat"
+                ];
+                
+                const numCities = 8; // Increased from 6
+                const cityPositions = [150, 280, 410, 540, 670, 800, 930, 1060]; // 8 positions spread across screen
+                
+                // Randomly select unique city names
+                const shuffledNames = [...allCityNames].sort(() => Math.random() - 0.5);
+                const selectedNames = shuffledNames.slice(0, numCities);
+                
+                // Create array of structure types (0-15) and shuffle them
+                const structureTypes = Array.from({length: 16}, (_, i) => i);
+                const shuffledStructures = [...structureTypes].sort(() => Math.random() - 0.5);
+                
+                for (let i = 0; i < cityPositions.length; i++) {
+                    // Assign a random structure type to each city
+                    const structureType = shuffledStructures[i % 16];
+                    this.cities.push(new VectorCity(this, cityPositions[i], SCREEN_HEIGHT - 80, selectedNames[i], structureType));
+                }
+                
+                // Reset all cities to active state
+                for (const city of this.cities) {
+                    city.active = true;
+                }
+            }
+
             createCityNameTexts() {
                 for (const city of this.cities) {
                     if (city.active) {
-                        const nameText = this.add.text(city.x, city.y + 8, city.name, {
+                        const nameText = this.add.text(city.x, city.y + 20, city.name, {
                             fontSize: '20px',
                             fontFamily: 'Courier New',
                             color: '#008000'
@@ -813,7 +1254,7 @@
                 this.citiesText.setText(`CITIES: ${activeCities}`);
                 
                 const timeRemaining = Math.max(0, this.levelTimeLimit - this.levelTimer);
-                const secondsRemaining = Math.floor(timeRemaining / 60);
+                const secondsRemaining = Math.ceil(timeRemaining / 1000); // Convert milliseconds to seconds
                 const timeColor = secondsRemaining < 5 ? '#ff0000' : secondsRemaining < 10 ? '#ffff00' : '#ffffff';
                 this.timeText.setText(`TIME: ${secondsRemaining.toString().padStart(2, '0')}S`);
                 this.timeText.setColor(timeColor);
@@ -867,17 +1308,20 @@
                     const pointer = this.input.activePointer;
                     const crosshairSize = 10 + Math.sin(this.crosshairPulse) * 2;
                     
-                    this.renderer.drawLine(
-                        pointer.x - crosshairSize, pointer.y,
-                        pointer.x + crosshairSize, pointer.y,
-                        COLORS.VECTOR_WHITE, 1
-                    );
-                    this.renderer.drawLine(
-                        pointer.x, pointer.y - crosshairSize,
-                        pointer.x, pointer.y + crosshairSize,
-                        COLORS.VECTOR_WHITE, 1
-                    );
-                    this.renderer.drawCircle(pointer.x, pointer.y, crosshairSize, COLORS.VECTOR_WHITE, 1);
+                    // Only draw crosshair if pointer is within game bounds
+                    if (pointer.x >= 0 && pointer.x <= SCREEN_WIDTH && pointer.y >= 0 && pointer.y <= SCREEN_HEIGHT) {
+                        this.renderer.drawLine(
+                            pointer.x - crosshairSize, pointer.y,
+                            pointer.x + crosshairSize, pointer.y,
+                            COLORS.VECTOR_WHITE, 1
+                        );
+                        this.renderer.drawLine(
+                            pointer.x, pointer.y - crosshairSize,
+                            pointer.x, pointer.y + crosshairSize,
+                            COLORS.VECTOR_WHITE, 1
+                        );
+                        this.renderer.drawCircle(pointer.x, pointer.y, crosshairSize, COLORS.VECTOR_WHITE, 1);
+                    }
                 }
 
                 // Draw timer bar
@@ -930,6 +1374,12 @@
             scene: [TitleScene, GameScene],
             physics: {
                 default: 'arcade'
+            },
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                width: SCREEN_WIDTH,
+                height: SCREEN_HEIGHT
             }
         };
 
