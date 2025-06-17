@@ -926,10 +926,9 @@
                 this.levelTimeLimit = 30000; // 30 seconds in milliseconds  
                 this.levelTimer = 0;
 
-                // Notifications
-                this.cityDestroyedNotification = null;
-                this.notificationTimer = 0;
-                this.notificationDuration = 5000; // 5 seconds in milliseconds
+                // Notifications - now supports multiple stacked notifications
+                this.cityDestroyedNotifications = []; // Array of notifications
+                this.notificationDuration = 4000; // 4 seconds in milliseconds
 
                 // UI Text
                 this.createUI();
@@ -1009,15 +1008,29 @@
                 this.levelTimer += delta; // Add delta time in milliseconds
                 this.crosshairPulse += 0.05; // Reduced from 0.1
 
-                // Update notification
-                if (this.cityDestroyedNotification) {
-                    this.notificationTimer += delta;
-                    if (this.notificationTimer >= this.notificationDuration) {
-                        if (this.cityDestroyedNotification.text) {
-                            this.cityDestroyedNotification.text.destroy();
+                // Update notifications with fade effect
+                for (let i = this.cityDestroyedNotifications.length - 1; i >= 0; i--) {
+                    const notification = this.cityDestroyedNotifications[i];
+                    notification.timer += delta;
+                    
+                    // Calculate fade alpha (starts fading at 50% of duration)
+                    const fadeStartTime = this.notificationDuration * 0.5; // Start fading at 2 seconds
+                    if (notification.timer > fadeStartTime) {
+                        const fadeProgress = (notification.timer - fadeStartTime) / (this.notificationDuration - fadeStartTime);
+                        const alpha = Math.max(0, 1.0 - fadeProgress);
+                        if (notification.text) {
+                            notification.text.setAlpha(alpha);
                         }
-                        this.cityDestroyedNotification = null;
-                        this.notificationTimer = 0;
+                    }
+                    
+                    // Remove notification after duration
+                    if (notification.timer >= this.notificationDuration) {
+                        if (notification.text) {
+                            notification.text.destroy();
+                        }
+                        this.cityDestroyedNotifications.splice(i, 1);
+                        // Reposition remaining notifications
+                        this.repositionNotifications();
                     }
                 }
 
@@ -1119,6 +1132,17 @@
                 }
             }
 
+            repositionNotifications() {
+                // Reposition all remaining notifications to stack vertically
+                for (let i = 0; i < this.cityDestroyedNotifications.length; i++) {
+                    const notification = this.cityDestroyedNotifications[i];
+                    if (notification.text) {
+                        const yPosition = SCREEN_HEIGHT / 2 - 60 + (i * 40); // Stack with 40px spacing
+                        notification.text.setY(yPosition);
+                    }
+                }
+            }
+
             checkCityHit(x, y) {
                 for (let i = 0; i < this.cities.length; i++) {
                     const city = this.cities[i];
@@ -1131,16 +1155,21 @@
                             this.cityNameTexts[i] = null;
                         }
                         
-                        // Show notification
-                        const notificationText = this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60, 
+                        // Add new notification to the stack
+                        const yPosition = SCREEN_HEIGHT / 2 - 60 + (this.cityDestroyedNotifications.length * 40);
+                        const notificationText = this.add.text(SCREEN_WIDTH / 2, yPosition, 
                             `${city.name} DESTROYED!`, {
                             fontSize: '28px',
                             fontFamily: 'Courier New',
                             color: '#ff0000'
                         }).setOrigin(0.5);
                         
-                        this.cityDestroyedNotification = { text: notificationText };
-                        this.notificationTimer = 0;
+                        // Add to notifications array
+                        this.cityDestroyedNotifications.push({
+                            text: notificationText,
+                            timer: 0
+                        });
+                        
                         break;
                     }
                 }
@@ -1239,6 +1268,13 @@
                 for (let i = 0; i < this.cityNameTexts.length; i++) {
                     if (this.cityNameTexts[i]) {
                         this.cityNameTexts[i].destroy();
+                    }
+                }
+                
+                // Clean up any remaining notifications
+                for (const notification of this.cityDestroyedNotifications) {
+                    if (notification.text) {
+                        notification.text.destroy();
                     }
                 }
                 
