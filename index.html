@@ -499,6 +499,11 @@
                 for (let i = 0; i < cityPositions.length; i++) {
                     this.cities.push(new VectorCity(this, cityPositions[i], SCREEN_HEIGHT - 80, cityNames[i]));
                 }
+                
+                // Reset all cities to active state
+                for (const city of this.cities) {
+                    city.active = true;
+                }
 
                 // Missile bases
                 this.basePositions = [
@@ -584,14 +589,7 @@
 
                 // City name texts
                 this.cityNameTexts = [];
-                for (const city of this.cities) {
-                    const nameText = this.add.text(city.x, city.y + 8, city.name, {
-                        fontSize: '20px',
-                        fontFamily: 'Courier New',
-                        color: '#008000'
-                    }).setOrigin(0.5);
-                    this.cityNameTexts.push(nameText);
-                }
+                this.createCityNameTexts();
             }
 
             update(time, delta) {
@@ -716,7 +714,12 @@
                     const city = this.cities[i];
                     if (city.active && Math.sqrt((x - city.x) ** 2 + (y - city.y) ** 2) < 40) {
                         city.active = false;
-                        this.cityNameTexts[i].setVisible(false);
+                        
+                        // Properly destroy the city name text
+                        if (this.cityNameTexts[i]) {
+                            this.cityNameTexts[i].destroy();
+                            this.cityNameTexts[i] = null;
+                        }
                         
                         // Show notification
                         const notificationText = this.add.text(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60, 
@@ -775,7 +778,29 @@
                 }).setOrigin(0.5);
             }
 
+            createCityNameTexts() {
+                for (const city of this.cities) {
+                    if (city.active) {
+                        const nameText = this.add.text(city.x, city.y + 8, city.name, {
+                            fontSize: '20px',
+                            fontFamily: 'Courier New',
+                            color: '#008000'
+                        }).setOrigin(0.5);
+                        this.cityNameTexts.push(nameText);
+                    } else {
+                        this.cityNameTexts.push(null);
+                    }
+                }
+            }
+
             resetGame() {
+                // Clean up existing city name texts
+                for (let i = 0; i < this.cityNameTexts.length; i++) {
+                    if (this.cityNameTexts[i]) {
+                        this.cityNameTexts[i].destroy();
+                    }
+                }
+                
                 this.scene.restart();
             }
 
@@ -792,6 +817,15 @@
                 const timeColor = secondsRemaining < 5 ? '#ff0000' : secondsRemaining < 10 ? '#ffff00' : '#ffffff';
                 this.timeText.setText(`TIME: ${secondsRemaining.toString().padStart(2, '0')}S`);
                 this.timeText.setColor(timeColor);
+                
+                // Update city name text visibility
+                for (let i = 0; i < this.cities.length; i++) {
+                    if (this.cityNameTexts[i]) {
+                        if (!this.cities[i].active) {
+                            this.cityNameTexts[i].setVisible(false);
+                        }
+                    }
+                }
             }
 
             draw() {
